@@ -1,0 +1,109 @@
+
+
+
+
+#! /bin/bash
+
+#PBS -l walltime=24:00:00
+#PBS -l nodes=1:ppn=2
+#PBS -l mem=4g
+
+# ENVIRONMENT
+module load java-jdk/1.8.0_92
+module load picard/2.18.29
+module load gcc/6.2.0
+module load R/3.6.1
+prj=/home/t.cri.biowksp19/wk3/rnaseq
+
+# INPUTS
+sample=HBR_Rep1
+bam=${prj}/alignment/${sample}.sorted.bam
+ref_fa=${prj}/reference/GRCh38.primary_assembly.genome.fa
+pair_orientation=FR
+ref_flat=${prj}/reference/gencode.v28.primary_assembly.annotation.refFlat
+ribosomal_interval_list=${prj}/reference/gencode.v28.primary_assembly.annotation.ribosome_ranges
+
+# OUTPUTS
+outpfx=${prj}/metrics/${sample}.sorted.bam
+val_metrics=${outpfx}.validation_metrics
+gc_bias_metrics=${outpfx}.gc_bias_metrics
+gc_bias_chart=${outpfx}.gc_bias_chart.pdf
+gc_bias_summary=${outpfx}.gc_bias_summary
+alignment_summary=${outpfx}.alignment_summary
+insert_size_metrics=${outpfx}.insert_size_metrics
+insert_size_histogram=${outpfx}.insert_size_histogram.pdf
+RNA_metrics=${outpfx}.RNA_metrics
+
+
+
+
+
+
+
+# Validate BAM File
+java -Xmx4g -jar ${PICARD} \
+    ValidateSamFile \
+    INPUT=$bam \
+    OUTPUT=$val_metrics \
+    REFERENCE_SEQUENCE=${ref_fa} \
+    MODE=SUMMARY \
+    VALIDATE_INDEX=true \
+    INDEX_VALIDATION_STRINGENCY=EXHAUSTIVE
+
+# GC Bias Metrics
+java -Xmx4g -jar ${PICARD} \
+    CollectGcBiasMetrics \
+    INPUT=$bam \
+    OUTPUT=$gc_bias_metrics \
+    REFERENCE_SEQUENCE=${ref_fa} \
+    CHART_OUTPUT=$gc_bias_chart \
+    SUMMARY_OUTPUT=$gc_bias_summary \
+    IS_BISULFITE_SEQUENCED=false \
+    METRIC_ACCUMULATION_LEVEL=ALL_READS \
+    METRIC_ACCUMULATION_LEVEL=READ_GROUP \
+    ALSO_IGNORE_DUPLICATES=true
+
+
+
+#  alignment summary
+java -Xmx4g -jar ${PICARD}\
+    CollectAlignmentSummaryMetrics \
+    INPUT=$bam \
+    OUTPUT=$alignment_summary \
+    REFERENCE_SEQUENCE=${ref_fa} \
+    MAX_INSERT_SIZE=100000 \
+    EXPECTED_PAIR_ORIENTATIONS=${pair_orientation} \
+    IS_BISULFITE_SEQUENCED=false \
+    METRIC_ACCUMULATION_LEVEL=ALL_READS \
+    METRIC_ACCUMULATION_LEVEL=READ_GROUP
+
+
+# CollectInsertSizeMetrics
+java -Xmx4g -jar ${PICARD}\
+   CollectInsertSizeMetrics \
+   INPUT=$bam \
+   OUTPUT=$insert_size_metrics \
+   H=$insert_size_histogram \
+   M=0.5 \
+   DEVIATIONS=10.0 \
+   HISTOGRAM_WIDTH=null \
+   METRIC_ACCUMULATION_LEVEL=ALL_READS \
+   INCLUDE_DUPLICATES=false \
+   ASSUME_SORTED=true 
+
+
+#  CollectRnaSeqMetrics
+java -Xmx4g -jar ${PICARD}\
+   CollectRnaSeqMetrics \
+   INPUT=$bam \
+   OUTPUT=$RNA_metrics \
+   REF_FLAT=$ref_flat \
+   STRAND=SECOND_READ_TRANSCRIPTION_STRAND \
+   RIBOSOMAL_INTERVALS=$ribosomal_interval_list \
+   MINIMUM_LENGTH=500 \
+   CHART_OUTPUT=null \
+   IGNORE_SEQUENCE=null \
+   RRNA_FRAGMENT_PERCENTAGE=0.8 \
+   METRIC_ACCUMULATION_LEVEL=ALL_READS \
+   ASSUME_SORTED=true 
+
