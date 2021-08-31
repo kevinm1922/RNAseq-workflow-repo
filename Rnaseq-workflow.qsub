@@ -62,7 +62,7 @@ java -Xmx4g -jar ${PICARD} \
 
 
 
-#  alignment summary
+# Alignment summary
 java -Xmx4g -jar ${PICARD}\
     CollectAlignmentSummaryMetrics \
     INPUT=$bam \
@@ -89,7 +89,7 @@ java -Xmx4g -jar ${PICARD}\
    ASSUME_SORTED=true 
 
 
-#  CollectRnaSeqMetrics
+# CollectRnaSeqMetrics
 java -Xmx4g -jar ${PICARD}\
    CollectRnaSeqMetrics \
    INPUT=$bam \
